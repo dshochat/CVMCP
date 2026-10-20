@@ -1,0 +1,78 @@
+No problem. Here’s the full setup from scratch, in the order that worked last time, including the fixes we hit along the way (Python 3.15, uv on PATH, the self-signed certificate).
+
+Step 1: Python and uv (PowerShell on the lab machine)
+
+powershell
+py --version
+No Python? Install it from python.org (any 3.11 or newer) and tick “Add python.exe to PATH”. Or, if winget works: winget install Python.Python.3.12. Close and reopen PowerShell afterwards.
+Install uv:
+powershell
+py -m pip install uv
+function uv { py -m uv @args }
+uv --version
+
+(The function uv line is needed in every new PowerShell window.)
+
+Step 2: copy and install the package. Copy C:\WEB\CV MCP\Commvault-MCP-Recovery-Assurance.zip to the lab machine and extract it to C:\CV-MCP\. Then:
+
+powershell
+cd C:\CV-MCP\Commvault-MCP-Recovery-Assurance\commvault-mcp-server
+uv sync --python 3.11
+
+--python 3.11 makes uv download its own Python 3.11 for this project, whatever version you installed in Step 1.
+
+Step 3: offline self-test
+
+powershell
+uv run pytest tests_recovery
+uv run demo\run_demo.py
+
+Expect 71 passed, and the demo should end with section 7.
+
+Step 4: create Commvault tokens. In Command Center: username (top right) → Profile → Access tokens → Add token. Name it mcp-lab, set Scope to All, and Submit. Copy both the access token and the refresh token; they’re shown only once.
+
+Step 5: connect the MCP to the lab
+
+powershell
+$env:SSL_VERIFY="false"
+uv run setup.py
+Prompt	Answer
+Instance ID	Enter
+Metallic setup?	no
+CC_SERVER_URL	https://<webserver host>, without /commandcenter
+Transport mode	stdio
+Authentication	token-based (not OAuth)
+access_token / refresh_token	paste them (the screen may stay blank while you paste; just press Enter)
+
+You should see “Tokens validated and stored successfully.” Then run notepad .env, add the line SSL_VERIFY=false at the bottom if it isn’t there, and save.
+
+Step 6: check the connection and the lab contents
+
+powershell
+$env:PYTHONWARNINGS="ignore:Unverified HTTPS request"
+uv run python -c "from src.tools.client_tools import get_client_list; print(get_client_list())"
+
+Expect a list of clients. Since the lab was rebuilt, check that vmwsql1, vmwlnx1 and dc1 are still there. In Command Center, also check that the Cleanroom recovery group “Sample Application 1” still exists. If any names changed, tell me before Step 7, because the scenario graph uses these names.
+
+Step 7: the tests
+
+powershell
+uv run lab\lab_probe.py --seed vmwsql1 --app LabSQL --group "Sample Application 1"
+uv run lab\run_scenario.py --scenario identity_compromise --graph lab\graphs\lab_identity_dc1.json --group "Sample Application 1"
+uv run lab\run_scenario.py --scenario identity_compromise,ransomware --graph lab\graphs\lab_identity_dc1.json --group "Sample Application 1"
+
+What to look for:
+
+Probe: only vmwlnx1 as a candidate, a note that ESX1 was ignored, and the entity detail via: … line.
+Scenario: dc1 first, a CRITICAL flag that the recovery group uses LATEST, and pre-cutoff recovery points for each server.
+Chained run: “Identity compromise + Ransomware” with the merged steps.
+
+Step 8: results to me. On your PC, create C:\WEB\CV MCP\lab\results\ and copy in:
+
+lab\probe_output
+lab\scenario_output
+screenshots of the end of each Step 7 command
+
+Then tell me “results copied”.
+
+Send a screenshot of anything that errors along the way.
