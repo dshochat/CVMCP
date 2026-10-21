@@ -1,0 +1,4 @@
+uv run lab\lab_probe.py --seed dc1 --group "IR-dc1-test"
+Rename-Item lab\probe_output probe_ir
+uv run lab\lab_probe.py --seed dc1 --group "Sample Application 1"
+Rename-Item lab\probe_output probe_sample
