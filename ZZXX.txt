@@ -1,1 +1,0 @@
-Read lab\defender\incident_dc1_identity.json (a Microsoft Defender incident) and lab\defender\exposure_dc1_identity.json (the Exposure Management export). Build the recovery runbook and create it in Commvault, using “Sample Application 1” as the base.
